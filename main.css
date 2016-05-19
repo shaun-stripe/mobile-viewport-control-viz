@@ -1,8 +1,10 @@
 #phone-canvas {
   position: absolute;
-  top: 0px;
-  left: 200px;
   border: 1px solid #eee;
+}
+
+#frame {
+  position: absolute;
 }
 
 #space-canvas {

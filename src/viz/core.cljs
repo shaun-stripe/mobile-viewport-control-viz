@@ -7,6 +7,10 @@
 (def phone-width 240)
 (def phone-height (-> phone-width (/ 9) (* 16)))
 
+(def frame-width 360)
+(def frame-x 24)
+(def frame-y 99)
+
 (def phone-x 200)
 (def phone-y 200)
 
@@ -73,10 +77,21 @@
 ;; Init
 ;;----------------------------------------------------------------------
 
+(defn init-frame []
+  (let [frame (js/document.getElementById "frame")
+        x (- phone-x frame-x)
+        y (- phone-y frame-y)
+        scale (/ phone-width frame-width)]
+    (set! (.. frame -style -left) (str x "px"))
+    (set! (.. frame -style -top) (str y "px"))
+    (aset (.. frame -style) "transform-origin" (str frame-x "px " frame-y "px"))
+    (set! (.. frame -style -transform) (str "scale(" scale ")"))))
+
 (defn init-phone []
   (let [canvas (js/document.getElementById "phone-canvas")]
     (set! (.. canvas -width) phone-width)
     (set! (.. canvas -height) phone-height)
+    (set! (.. canvas -style -left) (str phone-x "px"))
     (set! (.. canvas -style -top) (str phone-y "px"))
     (set! phone-ctx (.getContext canvas "2d"))
     (set! phone-canvas canvas)))
@@ -90,6 +105,7 @@
 
 (defn init []
   (init-phone)
+  (init-frame)
   (init-space)
   (draw))
 
