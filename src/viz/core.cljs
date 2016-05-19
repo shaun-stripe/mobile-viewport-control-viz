@@ -266,6 +266,21 @@
       (<! (animate! [:viewport :y] {:a :_ :b top :duration 3}))
       (recur))))
 
+(defn start-zoom-anim! []
+  (let [margin 30
+        top (- margin)
+        bottom (- (+ page-height margin) phone-height)
+        mid (/ (+ top bottom) 2)]
+    (go-loop []
+      (<! (animate! [:viewport :y]     {:a top :b mid :duration 1}))
+      (<! (animate! [:viewport :scale] {:a :_ :b 2 :duration 1}))
+      (<! (animate! [:viewport :x]     {:a :_ :b (/ phone-width 2) :duration 1}))
+      (<! (animate! [:viewport :y]     {:a :_ :b bottom :duration 1}))
+      (<! (animate! [:viewport :x]     {:a :_ :b 0 :duration 1}))
+      (<! (animate! [:viewport :scale] {:a :_ :b 1 :duration 1}))
+      (<! (animate! [:viewport :y]     {:a :_ :b top :duration 1}))
+      (recur))))
+
 (defn init []
   (init-phone)
   (init-frame)
@@ -276,6 +291,6 @@
     (draw-loop))
 
   (start-ticking!)
-  (start-scroll-anim!))
+  (start-zoom-anim!))
 
 (init)
