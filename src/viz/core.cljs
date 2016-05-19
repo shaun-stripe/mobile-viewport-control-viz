@@ -17,13 +17,13 @@
 (def frame-x 24)
 (def frame-y 99)
 
-(def phone-x 260)
+(def phone-x 280)
 (def phone-y 300)
 
 (def space-y 0)
 (def space-x (+ phone-width (* 2 phone-x)))
 
-(def space-width 1000)
+(def space-width space-x)
 (def space-height (+ phone-height (* 2 phone-y)))
 
 ;;----------------------------------------------------------------------
@@ -115,8 +115,8 @@
     (set! (.-textAlign ctx) "center")
     (set! (.-textBaseline ctx) "middle")
     (set! (.-fillStyle ctx) frame-color)
-    (.fillText ctx "viewport"
-      (+ phone-x (* 3 (/ phone-width 2)))
+    (.fillText ctx "viewport ="
+      (/ phone-x 2)
       (+ phone-y (/ phone-height 2)))
     (.restore ctx)))
 
