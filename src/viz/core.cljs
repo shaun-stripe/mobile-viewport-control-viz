@@ -40,9 +40,8 @@
 ;;----------------------------------------------------------------------
 
 (def initial-state
-  {:viewport {:scale 1
-              :x 0
-              :y 60}})
+  {:viewport {:scale 1 :x 0 :y 60}
+   :page nil})
 
 (def state (atom initial-state))
 
@@ -65,7 +64,7 @@
 (def block-height 220)
 (def block-width phone-width)
 
-(def block-table
+(def block-table ;; layout for desktop page
   [{:height block-height
     :colors [0]}
    {:height (* block-height 0.7)
@@ -75,7 +74,11 @@
    {:height block-height
     :colors [4]}])
 
-(def page-height (reduce + 0 (map :height block-table)))
+(defn page-height []
+  (case (:page @state)
+    :mobile (* block-height (count color-table))
+    :desktop (reduce + 0 (map :height block-table))
+    nil))
 
 (def page-alpha 0.4)
 (def bg-color "#f5f5f5")
@@ -83,7 +86,13 @@
 (def frame-color "#555")
 (def frame-thickness 5)
 
-(defn draw-page [ctx]
+(defn draw-mobile-page [ctx]
+  (doseq [color color-table]
+    (set! (.. ctx -fillStyle) color)
+    (.fillRect ctx 0 0 block-width block-height)
+    (.translate ctx 0 block-height)))
+
+(defn draw-desktop-page [ctx]
   (doseq [{:keys [height colors]} block-table]
     (let [width (/ block-width (count colors))]
       (.save ctx)
@@ -93,6 +102,12 @@
         (.translate ctx width 0))
       (.restore ctx)
       (.translate ctx 0 height))))
+
+(defn draw-page [ctx]
+  (case (:page @state)
+    :mobile (draw-mobile-page ctx)
+    :desktop (draw-desktop-page ctx)
+    nil))
 
 ;;----------------------------------------------------------------------
 ;; Draw Views
@@ -258,18 +273,20 @@
     c))
 
 (defn start-scroll-anim! []
+  (swap! state assoc :page :mobile)
   (let [margin 30
         top (- margin)
-        bottom (- (+ page-height margin) phone-height)]
+        bottom (- (+ (page-height) margin) phone-height)]
     (go-loop []
       (<! (animate! [:viewport :y] {:a top :b bottom :duration 3}))
       (<! (animate! [:viewport :y] {:a :_ :b top :duration 3}))
       (recur))))
 
 (defn start-zoom-anim! []
+  (swap! state assoc :page :desktop)
   (let [margin 30
         top (- margin)
-        bottom (- (+ page-height margin) phone-height)
+        bottom (- (+ (page-height) margin) phone-height)
         mid (/ (+ top bottom) 2)]
     (go-loop []
       (<! (animate! [:viewport :y]     {:a top :b mid :duration 1}))
