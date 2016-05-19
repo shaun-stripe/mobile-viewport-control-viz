@@ -32,23 +32,53 @@
 
 (def initial-state
   {:viewport {:scale 1
-              :x 200
+              :x 0
               :y 60}})
 
 (def state (atom initial-state))
 
 ;;----------------------------------------------------------------------
-;; Draw
+;; Draw Page
 ;;----------------------------------------------------------------------
 
-(defn draw-page [ctx]
+(defn draw-placeholder [ctx]
   (let [img (js/document.getElementById "placeholder")]
     (.drawImage ctx img 0 0)))
+
+;; from: http://www.colourlovers.com/palette/141533/Not_Another_Rainbow
+(def colors
+  ["#6AA394"
+   "#BCE48E"
+   "#F8FF85"
+   "#F3B55D"
+   "#8B3E48"])
+
+(def page-alpha 0.4)
+(def bg-color "#f5f5f5")
+
+(def section-height 220)
+(def section-width phone-width)
+(def section-pad 10)
+
+(defn draw-page [ctx]
+  (doseq [color colors]
+    (set! (.. ctx -fillStyle) color)
+    (.fillRect ctx 0 0 section-width section-height)
+    (.translate ctx 0 section-height)
+    (set! (.. ctx -fillStyle) bg-color)
+    (.fillRect ctx 0 0 section-width section-pad)
+    (.translate ctx 0 section-pad)))
+
+;;----------------------------------------------------------------------
+;; Draw Views
+;;----------------------------------------------------------------------
 
 (defn draw-page-on-phone []
   (let [{:keys [x y scale]} (:viewport @state)
         ctx phone-ctx]
     (.save ctx)
+    (set! (.-fillStyle ctx) bg-color)
+    (.fillRect ctx 0 0 phone-width phone-height)
     (.scale ctx scale scale)
     (.translate ctx (- x) (- y))
     (draw-page ctx)
@@ -61,12 +91,15 @@
     (.translate ctx phone-x phone-y)
     (.scale ctx scale scale)
     (.translate ctx (- x) (- y))
-    (set! (.-globalAlpha ctx) 0.2)
+    (set! (.-globalAlpha ctx) page-alpha)
     (draw-page ctx)
     (.restore ctx)))
 
 (defn draw-phone-on-space []
-  (.drawImage space-ctx phone-canvas phone-x phone-y))
+  (let [ctx space-ctx]
+    (.save ctx)
+    (.drawImage ctx phone-canvas phone-x phone-y)
+    (.restore ctx)))
 
 (defn draw []
   (draw-page-on-phone)
