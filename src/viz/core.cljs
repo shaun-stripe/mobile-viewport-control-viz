@@ -2,7 +2,7 @@
   (:require-macros
     [cljs.core.async.macros :refer [go go-loop]])
   (:require
-    [cljs.core.async :refer [put! <! chan tap untap mult]]))
+    [cljs.core.async :refer [put! close! <! chan tap untap mult]]))
 
 (enable-console-print!)
 
@@ -17,7 +17,7 @@
 (def frame-x 24)
 (def frame-y 99)
 
-(def phone-x 200)
+(def phone-x 260)
 (def phone-y 300)
 
 (def space-y 0)
@@ -68,6 +68,9 @@
 (def section-height 220)
 (def section-width phone-width)
 
+(def frame-color "#555")
+(def frame-thickness 5)
+
 (defn draw-page [ctx]
   (doseq [color colors]
     (set! (.. ctx -fillStyle) color)
@@ -105,6 +108,16 @@
   (let [ctx space-ctx]
     (.save ctx)
     (.drawImage ctx phone-canvas phone-x phone-y)
+    (set! (.-strokeStyle ctx) frame-color)
+    (set! (.-lineWidth ctx) frame-thickness)
+    (.strokeRect ctx phone-x phone-y phone-width phone-height)
+    (set! (.-font ctx) "300 40px Roboto")
+    (set! (.-textAlign ctx) "center")
+    (set! (.-textBaseline ctx) "middle")
+    (set! (.-fillStyle ctx) frame-color)
+    (.fillText ctx "viewport"
+      (+ phone-x (* 3 (/ phone-width 2)))
+      (+ phone-y (/ phone-height 2)))
     (.restore ctx)))
 
 (defn draw []
@@ -224,16 +237,25 @@
     (set! space-ctx (.getContext canvas "2d"))
     (set! space-canvas canvas)))
 
+(defn load-fonts!
+  [families]
+  (let [c (chan)]
+    (.load js/WebFont (clj->js {:google {:families families} :active #(close! c)}))
+    c))
+
 (defn init []
   (init-phone)
   (init-frame)
   (init-space)
-  (draw-loop)
+
+  (go
+    (<! (load-fonts! ["Roboto:100,300,400,700" "Open Sans"]))
+    (draw-loop))
 
   (start-ticking!)
   (go-loop []
-    (<! (animate! [:viewport :y] {:a 0 :b 700 :duration 3}))
-    (<! (animate! [:viewport :y] {:a :_ :b 0 :duration 3}))
+    (<! (animate! [:viewport :y] {:a -30 :b 700 :duration 3}))
+    (<! (animate! [:viewport :y] {:a :_ :b -30 :duration 3}))
     (recur)))
 
 (init)
