@@ -55,28 +55,44 @@
     (.drawImage ctx img 0 0)))
 
 ;; from: http://www.colourlovers.com/palette/141533/Not_Another_Rainbow
-(def colors
+(def color-table
   ["#6AA394"
    "#BCE48E"
    "#F8FF85"
    "#F3B55D"
    "#8B3E48"])
 
+(def block-height 220)
+(def block-width phone-width)
+
+(def block-table
+  [{:height block-height
+    :colors [0]}
+   {:height (* block-height 0.7)
+    :colors [1 2]}
+   {:height (* block-height 0.5)
+    :colors [3]}
+   {:height block-height
+    :colors [4]}])
+
+(def page-height (reduce + 0 (map :height block-table)))
+
 (def page-alpha 0.4)
 (def bg-color "#f5f5f5")
-
-(def section-height 220)
-(def section-width phone-width)
 
 (def frame-color "#555")
 (def frame-thickness 5)
 
 (defn draw-page [ctx]
-  (doseq [color colors]
-    (set! (.. ctx -fillStyle) color)
-    (.fillRect ctx 0 0 section-width section-height)
-    (.translate ctx 0 section-height)
-    (set! (.. ctx -fillStyle) bg-color)))
+  (doseq [{:keys [height colors]} block-table]
+    (let [width (/ block-width (count colors))]
+      (.save ctx)
+      (doseq [color colors]
+        (set! (.. ctx -fillStyle) (color-table color))
+        (.fillRect ctx 0 0 width height)
+        (.translate ctx width 0))
+      (.restore ctx)
+      (.translate ctx 0 height))))
 
 ;;----------------------------------------------------------------------
 ;; Draw Views
@@ -158,8 +174,7 @@
     (put! tick-chan dt))
   (.requestAnimationFrame js/window tick!))
 
-(defn start-ticking!
-  []
+(defn start-ticking! []
   (.requestAnimationFrame js/window tick!))
 
 (def tweens
@@ -170,7 +185,6 @@
 (defn resolve-tween
   "Resolve the tween to a function if it's a name."
   [tween]
-  (println tween)
   (cond-> tween
     (keyword? tween) tweens))
 
@@ -243,6 +257,15 @@
     (.load js/WebFont (clj->js {:google {:families families} :active #(close! c)}))
     c))
 
+(defn start-scroll-anim! []
+  (let [margin 30
+        top (- margin)
+        bottom (- (+ page-height margin) phone-height)]
+    (go-loop []
+      (<! (animate! [:viewport :y] {:a top :b bottom :duration 3}))
+      (<! (animate! [:viewport :y] {:a :_ :b top :duration 3}))
+      (recur))))
+
 (defn init []
   (init-phone)
   (init-frame)
@@ -253,9 +276,6 @@
     (draw-loop))
 
   (start-ticking!)
-  (go-loop []
-    (<! (animate! [:viewport :y] {:a -30 :b 700 :duration 3}))
-    (<! (animate! [:viewport :y] {:a :_ :b -30 :duration 3}))
-    (recur)))
+  (start-scroll-anim!))
 
 (init)
