@@ -2,7 +2,8 @@
   (:require-macros
     [cljs.core.async.macros :refer [go go-loop]])
   (:require
-    [cljs.core.async :refer [put! close! <! chan tap untap mult]]))
+    [cljs.core.async :refer [put! close! <! chan tap untap mult timeout]]
+    [clojure.string :as string]))
 
 (enable-console-print!)
 
@@ -26,6 +27,13 @@
 (def space-width space-x)
 (def space-height (+ phone-height (* 2 phone-y)))
 
+(def space-alpha 0.4)
+(def bg-color "#f5f5f5")
+
+(def frame-color "#555")
+(def freeze-frame-color "#FFF")
+(def frame-thickness 5)
+
 ;;----------------------------------------------------------------------
 ;; References
 ;;----------------------------------------------------------------------
@@ -41,8 +49,10 @@
 
 (def initial-state
   {:viewport {:scale 1 :x 0 :y 60}
+   :prev-viewport nil
    :page nil
-   :caption ""})
+   :caption ""
+   :freeze-opacity 0})
 
 (def state (atom initial-state))
 
@@ -81,12 +91,6 @@
     :desktop (reduce + 0 (map :height block-table))
     nil))
 
-(def page-alpha 0.4)
-(def bg-color "#f5f5f5")
-
-(def frame-color "#555")
-(def frame-thickness 5)
-
 (defn draw-mobile-page [ctx]
   (doseq [color color-table]
     (set! (.. ctx -fillStyle) color)
@@ -108,7 +112,7 @@
   (case (:page @state)
     :mobile (draw-mobile-page ctx)
     :desktop (draw-desktop-page ctx)
-    nil))
+    (draw-placeholder ctx)))
 
 ;;----------------------------------------------------------------------
 ;; Draw Views
@@ -132,7 +136,7 @@
     (.translate ctx phone-x phone-y)
     (.scale ctx scale scale)
     (.translate ctx (- x) (- y))
-    (set! (.-globalAlpha ctx) page-alpha)
+    (set! (.-globalAlpha ctx) space-alpha)
     (draw-page ctx)
     (.restore ctx)))
 
@@ -140,16 +144,26 @@
   (let [ctx space-ctx]
     (.save ctx)
     (.drawImage ctx phone-canvas phone-x phone-y)
-    (set! (.-strokeStyle ctx) frame-color)
     (set! (.-lineWidth ctx) frame-thickness)
+    (set! (.-strokeStyle ctx) frame-color)
     (.strokeRect ctx phone-x phone-y phone-width phone-height)
+    (set! (.-lineWidth ctx) (+ 2 frame-thickness))
+    (set! (.-strokeStyle ctx) freeze-frame-color)
+    (.save ctx)
+    (set! (.-globalAlpha ctx) (:freeze-opacity @state))
+    (.strokeRect ctx phone-x phone-y phone-width phone-height)
+    (.restore ctx)
+    (set! (.-font ctx) "300 40px Roboto")
+    (set! (.-textAlign ctx) "center")
+    (set! (.-textBaseline ctx) "middle")
+    (set! (.-fillStyle ctx) frame-color)
     (let [x (/ phone-x 2)
-          y (+ phone-y (/ phone-height 2))]
-      (set! (.-font ctx) "300 40px Roboto")
-      (set! (.-textAlign ctx) "center")
-      (set! (.-textBaseline ctx) "middle")
-      (set! (.-fillStyle ctx) frame-color)
-      (.fillText ctx (:caption @state) x y))
+          y (+ phone-y (/ phone-height 2))
+          lines (:caption @state)
+          lines (if (sequential? lines) lines [lines])]
+      (doseq [line lines]
+        (.fillText ctx line x y)
+        (.translate ctx 0 48)))
     (.restore ctx)))
 
 (defn draw []
@@ -303,6 +317,54 @@
       (<! (animate! [:viewport :y]     {:a :_ :b top :duration 1}))
       (recur))))
 
+(defn freeze-frame! [scale]
+  (swap! state assoc :prev-viewport (:viewport @state))
+  (go
+    (<! (animate! [:viewport :scale] {:a :_ :b scale :duration 0.1}))
+    (let [dt 100]
+      (dotimes [i 6]
+        (swap! state assoc :freeze-opacity 0)
+        (<! (timeout dt))
+        (swap! state assoc :freeze-opacity 1)
+        (<! (timeout dt))))
+    nil))
+
+(defn thaw-frame! []
+  (go
+    (let [{:keys [x y scale]} (:prev-viewport @state)
+          duration 0.1]
+      (<! (multi-animate!
+            [[[:viewport :x]     {:a :_ :b x :duration 0.1}]
+             [[:viewport :y]     {:a :_ :b y :duration 0.1}]
+             [[:viewport :scale] {:a :_ :b scale :duration 0.1}]])))
+    (<! (animate! [:freeze-opacity] {:a 1 :b 0 :duration 1}))))
+
+(defn start-freeze-anim! []
+  (swap! state assoc
+    :page :desktop)
+  (let [margin 30
+        top (- margin)
+        bottom (- (+ (page-height) margin) phone-height)
+        mid (/ (+ top bottom) 2)]
+    (go-loop []
+      (swap! state assoc :caption "")
+      (<! (animate! [:viewport :y]     {:a top :b mid :duration 1}))
+      (<! (animate! [:viewport :scale] {:a :_ :b 2 :duration 2}))
+
+      (swap! state assoc :caption ["Freeze" "zoom"])
+      (<! (freeze-frame! 1))
+      (<! (timeout 1))
+
+      (<! (animate! [:viewport :y]     {:a :_ :b bottom :duration 2}))
+
+      (swap! state assoc :caption ["Thaw to" "restore"])
+      (<! (thaw-frame!))
+
+      (<! (animate! [:viewport :y]     {:a :_ :b bottom :duration 1}))
+      (<! (animate! [:viewport :scale] {:a :_ :b 1 :duration 1}))
+      (<! (animate! [:viewport :y]     {:a :_ :b top :duration 1}))
+      (recur))))
+
 (defn init []
   (init-phone)
   (init-frame)
@@ -313,6 +375,6 @@
     (draw-loop))
 
   (start-ticking!)
-  (start-zoom-anim!))
+  (start-freeze-anim!))
 
 (init)
