@@ -18,10 +18,13 @@
 (def frame-y 99)
 
 (def phone-x 200)
-(def phone-y 200)
+(def phone-y 300)
+
+(def space-y 0)
+(def space-x (+ phone-width (* 2 phone-x)))
 
 (def space-width 1000)
-(def space-height 800)
+(def space-height (+ phone-height (* 2 phone-y)))
 
 ;;----------------------------------------------------------------------
 ;; References
@@ -64,16 +67,13 @@
 
 (def section-height 220)
 (def section-width phone-width)
-(def section-pad 10)
 
 (defn draw-page [ctx]
   (doseq [color colors]
     (set! (.. ctx -fillStyle) color)
     (.fillRect ctx 0 0 section-width section-height)
     (.translate ctx 0 section-height)
-    (set! (.. ctx -fillStyle) bg-color)
-    (.fillRect ctx 0 0 section-width section-pad)
-    (.translate ctx 0 section-pad)))
+    (set! (.. ctx -fillStyle) bg-color)))
 
 ;;----------------------------------------------------------------------
 ;; Draw Views
@@ -219,6 +219,8 @@
   (let [canvas (js/document.getElementById "space-canvas")]
     (set! (.. canvas -width) space-width)
     (set! (.. canvas -height) space-height)
+    (set! (.. canvas -style -left) (str space-x "px"))
+    (set! (.. canvas -style -top) (str space-y "px"))
     (set! space-ctx (.getContext canvas "2d"))
     (set! space-canvas canvas)))
 
