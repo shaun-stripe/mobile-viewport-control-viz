@@ -41,7 +41,8 @@
 
 (def initial-state
   {:viewport {:scale 1 :x 0 :y 60}
-   :page nil})
+   :page nil
+   :caption ""})
 
 (def state (atom initial-state))
 
@@ -142,13 +143,13 @@
     (set! (.-strokeStyle ctx) frame-color)
     (set! (.-lineWidth ctx) frame-thickness)
     (.strokeRect ctx phone-x phone-y phone-width phone-height)
-    (set! (.-font ctx) "300 40px Roboto")
-    (set! (.-textAlign ctx) "center")
-    (set! (.-textBaseline ctx) "middle")
-    (set! (.-fillStyle ctx) frame-color)
-    (.fillText ctx "viewport ="
-      (/ phone-x 2)
-      (+ phone-y (/ phone-height 2)))
+    (let [x (/ phone-x 2)
+          y (+ phone-y (/ phone-height 2))]
+      (set! (.-font ctx) "300 40px Roboto")
+      (set! (.-textAlign ctx) "center")
+      (set! (.-textBaseline ctx) "middle")
+      (set! (.-fillStyle ctx) frame-color)
+      (.fillText ctx (:caption @state) x y))
     (.restore ctx)))
 
 (defn draw []
@@ -273,7 +274,9 @@
     c))
 
 (defn start-scroll-anim! []
-  (swap! state assoc :page :mobile)
+  (swap! state assoc
+    :page :mobile
+    :caption "viewport =")
   (let [margin 30
         top (- margin)
         bottom (- (+ (page-height) margin) phone-height)]
@@ -283,7 +286,9 @@
       (recur))))
 
 (defn start-zoom-anim! []
-  (swap! state assoc :page :desktop)
+  (swap! state assoc
+    :page :desktop
+    :caption "viewport =")
   (let [margin 30
         top (- margin)
         bottom (- (+ (page-height) margin) phone-height)
@@ -304,7 +309,7 @@
   (init-space)
 
   (go
-    (<! (load-fonts! ["Roboto:100,300,400,700" "Open Sans"]))
+    (<! (load-fonts! ["Roboto:100,300,400,700" "Open Sans:100,300"]))
     (draw-loop))
 
   (start-ticking!)
