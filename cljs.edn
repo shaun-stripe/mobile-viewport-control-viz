@@ -1,0 +1,5 @@
+{:cljs-version "1.8.51"
+ :builds {:viz {:src "src"
+                :compiler {:main viz.core
+                           :optimizations :none
+                           :output-to "main.js"}}}}

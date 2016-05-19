@@ -1,0 +1,17 @@
+#phone-canvas {
+  position: absolute;
+  top: 0px;
+  right: 200px;
+  border: 1px solid #eee;
+}
+
+#space-canvas {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  border: 1px solid #eee;
+}
+
+#placeholder {
+  display: none;
+}
