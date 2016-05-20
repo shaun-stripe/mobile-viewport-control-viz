@@ -50,6 +50,7 @@
 (def initial-state
   {:viewport {:scale 1 :x 0 :y 60}
    :prev-viewport nil
+   :color-key nil
    :page nil
    :caption ""
    :freeze-opacity 0})
@@ -64,13 +65,41 @@
   (let [img (js/document.getElementById "placeholder")]
     (.drawImage ctx img 0 0)))
 
-;; from: http://www.colourlovers.com/palette/141533/Not_Another_Rainbow
-(def color-table
-  ["#6AA394"
-   "#BCE48E"
-   "#F8FF85"
-   "#F3B55D"
-   "#8B3E48"])
+(def color-tables
+  {:not-another-rainbow
+    ;; from: http://www.colourlovers.com/palette/141533/Not_Another_Rainbow
+    ["#6AA394"
+     "#BCE48E"
+     "#F8FF85"
+     "#F3B55D"
+     "#8B3E48"]
+
+   :ablaze
+    ;; from: http://www.colourlovers.com/palette/4245759/Ablaze
+    ["#DCC5B3"
+     "#FFD4A0"
+     "#FCA474"
+     "#E9835B"
+     "#C26E52"]
+
+   :sky-tonight
+    ;; from: http://www.colourlovers.com/palette/4245751/the_sky_tonight
+    ["#F9D8A7"
+     "#DFCDBB"
+     "#C1BEBB"
+     "#A0A3AB"
+     "#5F6C80"]
+
+   :pond-queens
+    ;; from: http://www.colourlovers.com/palette/4245664/Pond_Queens
+    ["#D5EB7C"
+     "#A3DD93"
+     "#93CDB9"
+     "#8FB0BA"
+     "#8492B4"]})
+
+(defn color-table []
+  (color-tables (:color-key @state)))
 
 (def block-height 220)
 (def block-width phone-width)
@@ -87,13 +116,13 @@
 
 (defn page-height []
   (case (:page @state)
-    :mobile (* block-height (count color-table))
+    :mobile (* block-height (count (color-table)))
     :desktop (reduce + 0 (map :height block-table))
     nil))
 
 (defn draw-mobile-page [ctx]
   (.save ctx)
-  (doseq [color color-table]
+  (doseq [color (color-table)]
     (set! (.. ctx -fillStyle) color)
     (.fillRect ctx 0 0 block-width block-height)
     (.translate ctx 0 block-height))
@@ -105,7 +134,7 @@
     (let [width (/ block-width (count colors))]
       (.save ctx)
       (doseq [color colors]
-        (set! (.. ctx -fillStyle) (color-table color))
+        (set! (.. ctx -fillStyle) (get (color-table) color))
         (.fillRect ctx 0 0 width height)
         (.translate ctx width 0))
       (.restore ctx)
@@ -321,6 +350,7 @@
 (defn start-scroll-anim! []
   (swap! state assoc
     :page :mobile
+    :color-key :pond-queens
     :caption "viewport =")
   (let [margin 30
         top (- margin)
@@ -333,6 +363,7 @@
 (defn start-zoom-anim! []
   (swap! state assoc
     :page :desktop
+    :color-key :ablaze
     :caption "viewport =")
   (let [margin 30
         top (- margin)
@@ -373,7 +404,8 @@
 
 (defn start-freeze-anim! []
   (swap! state assoc
-    :page :desktop)
+    :page :desktop
+    :color-key :sky-tonight)
   (let [margin 30
         top (- margin)
         bottom (- (+ (page-height) margin) phone-height)
@@ -407,6 +439,8 @@
     (draw-loop))
 
   (start-ticking!)
+  ;(start-scroll-anim!))
+  ;(start-zoom-anim!))
   (start-freeze-anim!))
 
 (init)
