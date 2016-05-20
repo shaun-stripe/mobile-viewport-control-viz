@@ -214,7 +214,10 @@
   (let [{:keys [x y scale]} (:viewport @state)]
     (.save ctx)
     (transform-space-to-page ctx)
-    (set! (.-globalAlpha ctx) (/ space-alpha 2))
+    (let [{:keys [index alpha]} (:isolate @state)
+          alpha (cond-> (/ space-alpha 2)
+                  index (* alpha))]
+      (set! (.-globalAlpha ctx) alpha))
     (when-let [{:keys [x y scale]} (:prev-viewport @state)]
       (set! (.-lineWidth ctx) border-thickness)
       (set! (.-strokeStyle ctx) border-color)
@@ -379,8 +382,7 @@
       (<! (animate! [:viewport :y]     {:a :_ :b top :duration 1}))
       (recur))))
 
-(defn freeze-frame! [scale]
-  (swap! state assoc :prev-viewport (:viewport @state))
+(defn freeze-frame-anim! [scale]
   (go
     (<! (animate! [:viewport :scale] {:a :_ :b scale :duration 0.1}))
     (let [dt 100]
@@ -391,15 +393,14 @@
         (<! (timeout dt))))
     nil))
 
-(defn thaw-frame! []
+(defn thaw-frame-anim! []
   (go
     (let [{:keys [x y scale]} (:prev-viewport @state)
           duration 0.1]
       (<! (multi-animate!
             [[[:viewport :x]     {:a :_ :b x :duration 0.1}]
              [[:viewport :y]     {:a :_ :b y :duration 0.1}]
-             [[:viewport :scale] {:a :_ :b scale :duration 0.1}]]))
-      (swap! state assoc :prev-viewport nil))
+             [[:viewport :scale] {:a :_ :b scale :duration 0.1}]])))
     (<! (animate! [:freeze-border-alpha] {:a 1 :b 0 :duration 1}))))
 
 (defn start-freeze-anim! []
@@ -415,19 +416,69 @@
       (<! (animate! [:viewport :y]     {:a top :b mid :duration 1}))
       (<! (animate! [:viewport :scale] {:a :_ :b 2 :duration 2}))
 
-      (swap! state assoc :caption ["1. Freeze" "   zoom"])
-      (<! (freeze-frame! 1))
-      (<! (timeout 1))
+      (swap! state assoc :caption ["1. Freeze" "   zoom"]
+                         :prev-viewport (:viewport @state))
+      (<! (freeze-frame-anim! 1))
+      (<! (timeout 1000))
 
       (<! (animate! [:viewport :y]     {:a :_ :b bottom :duration 2}))
 
       (swap! state assoc :caption ["2. Thaw to" "   restore"])
-      (<! (thaw-frame!))
+      (<! (thaw-frame-anim!))
+      (swap! state assoc :prev-viewport nil)
 
       (<! (animate! [:viewport :y]     {:a :_ :b bottom :duration 1}))
       (<! (animate! [:viewport :scale] {:a :_ :b 1 :duration 1}))
       (<! (animate! [:viewport :y]     {:a :_ :b top :duration 1}))
       (recur))))
+
+(defn start-isolate-anim! []
+  (swap! state assoc
+    :page-key :desktop
+    :color-key :equine)
+  (let [margin 30
+        top (- margin)
+        bottom (- (+ (page-height) margin) phone-height)
+        mid (/ (+ top bottom) 2)
+        isolate-x (/ phone-width 2)
+        isolate-y (-> (block-layout) first :height)
+        isolate-scale 2]
+    (go-loop []
+      (swap! state assoc :caption "")
+      (<! (animate! [:viewport :y] {:a top :b bottom :duration 2}))
+
+      (swap! state assoc :caption ["1. Isolate" "      element"])
+      (swap! state assoc-in [:isolate :index] 2)
+      (<! (animate! [:isolate :alpha] {:a 1 :b 0 :duration 2}))
+
+      (swap! state assoc :caption ["2. Page" "        reflows"]
+                         :prev-viewport (:viewport @state))
+      (<! (multi-animate!
+            [[[:viewport :x]     {:a :_ :b isolate-x :duration 1}]
+             [[:viewport :y]     {:a :_ :b isolate-y :duration 1}]]))
+      (<! (timeout 1000))
+
+      (swap! state assoc :caption ["3. Freeze" "   zoom"])
+      (<! (freeze-frame-anim! isolate-scale))
+
+      (<! (animate! [:viewport :y] {:a :_ :b (- isolate-y margin) :duration 0.5}))
+      (<! (animate! [:viewport :y] {:a :_ :b (+ isolate-y margin) :duration 0.5}))
+      (<! (animate! [:viewport :y] {:a :_ :b isolate-y :duration 0.5}))
+      (<! (timeout 1000))
+
+      (swap! state assoc :caption ["4. Restore" "       elements"])
+      (<! (animate! [:isolate :alpha] {:a :_ :b 1 :duration 1}))
+      (swap! state assoc-in [:isolate :index] nil)
+      (<! (timeout 1000))
+
+      (swap! state assoc :caption ["5. Thaw" "          viewport"])
+      (<! (thaw-frame-anim!))
+      (swap! state assoc :prev-viewport nil)
+
+      (<! (animate! [:viewport :y] {:a :_ :b top :duration 2}))
+      (recur))))
+
+
 
 ;;----------------------------------------------------------------------
 ;; Init
@@ -479,6 +530,7 @@
   (start-ticking!)
   ;(start-scroll-anim!))
   ;(start-zoom-anim!))
-  (start-freeze-anim!))
+  ;(start-freeze-anim!))
+  (start-isolate-anim!))
 
 (init)
