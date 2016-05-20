@@ -84,8 +84,8 @@
 
    ;; When isolating an element, we lower the opacity
    ;; of all other elements (i.e. the color blocks).
-   :isolate {:index nil    ;; element to isolate
-             :opacity 0}}) ;; opacity of other elements
+   :isolate {:index nil  ;; element to isolate
+             :alpha 0}}) ;; opacity of other elements
 
 (def state (atom initial-state))
 
@@ -162,17 +162,24 @@
   (reduce + 0 (map :height (block-layout))))
 
 (defn draw-page [ctx]
-  (.save ctx)
-  (doseq [{:keys [height colors]} (block-layout)]
-    (let [width (/ block-width (count colors))]
-      (.save ctx)
-      (doseq [color colors]
-        (set! (.. ctx -fillStyle) (get (color-palette) color))
-        (.fillRect ctx 0 0 width height)
-        (.translate ctx width 0))
-      (.restore ctx)
-      (.translate ctx 0 height)))
-  (.restore ctx))
+  (let [block-count (atom 0)]
+    (.save ctx)
+    (doseq [{:keys [height colors]} (block-layout)]
+      (let [width (/ block-width (count colors))]
+        (.save ctx)
+        (doseq [color-key colors]
+          (.save ctx)
+          (set! (.-fillStyle ctx) (get (color-palette) color-key))
+          (let [{:keys [index alpha]} (:isolate @state)]
+            (when (and index (not= @block-count index))
+              (set! (.-globalAlpha ctx) alpha)))
+          (.fillRect ctx 0 0 width height)
+          (.restore ctx)
+          (.translate ctx width 0)
+          (swap! block-count inc))
+        (.restore ctx)
+        (.translate ctx 0 height)))
+    (.restore ctx)))
 
 ;;----------------------------------------------------------------------
 ;; Draw Views
