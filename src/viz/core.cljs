@@ -8,52 +8,84 @@
 (enable-console-print!)
 
 ;;----------------------------------------------------------------------
+;; Canvas References
+;;----------------------------------------------------------------------
+
+;; Phone canvas and drawing context
+;; (the canvas inside the iphone frame)
+(def phone-canvas)
+(def phone-ctx)
+
+;; Space canvas and drawing context
+;; (the grey canvas displaying the whole page)
+(def space-canvas)
+(def space-ctx)
+
+;;----------------------------------------------------------------------
 ;; Constants
 ;;----------------------------------------------------------------------
 
+;; Size of the phone canvas
 (def phone-width 240)
 (def phone-height (-> phone-width (/ 9) (* 16)))
 
+;; Size of the screen inside the phone frame image
 (def frame-width 360)
+
+;; Offset into the phone frame image where screen starts
 (def frame-x 24)
 (def frame-y 99)
 
+;; Offset of the phone canvas on our page
 (def phone-x 280)
 (def phone-y 300)
 
+;; Offset of the space canvas on our page
 (def space-y 0)
 (def space-x (+ phone-width (* 2 phone-x)))
 
+;; Size of the space canvas
 (def space-width space-x)
 (def space-height (+ phone-height (* 2 phone-y)))
 
+;; The opacity of the page when it is outside the viewport
 (def space-alpha 0.4)
+
+;; Background color of the space canvas
 (def bg-color "#f5f5f5")
 
-(def frame-color "#555")
-(def freeze-frame-color "#FFF")
-(def frame-thickness 5)
-
-;;----------------------------------------------------------------------
-;; References
-;;----------------------------------------------------------------------
-
-(def phone-canvas)
-(def phone-ctx)
-(def space-canvas)
-(def space-ctx)
+;; We frame the visible viewport on the space canvas
+(def border-color "#555")
+(def freeze-border-color "#FFF")
+(def border-thickness 5)
 
 ;;----------------------------------------------------------------------
 ;; State
 ;;----------------------------------------------------------------------
 
 (def initial-state
-  {:viewport {:scale 1 :x 0 :y 60}
+  {;; Viewport (scroll and zoom)
+   :viewport {:scale 1 :x 0 :y 60}
+
+   ;; Previous viewport (saved when freezing, restored when thawing)
    :prev-viewport nil
+
+   ;; Key of the color palette in use
    :color-key nil
-   :page nil
+
+   ;; Key of the page to draw
+   :page-key nil
+
+   ;; Caption to display next to the viewport
    :caption ""
-   :freeze-opacity 0})
+
+   ;; Opacity of the frozen viewport border
+   :freeze-border-alpha 0
+
+   ;; When isolating an element, we lower the opacity
+   ;; of all other elements (i.e. the color blocks).
+   :isolate {:index nil    ;; element to isolate
+             :opacity 0}}) ;; opacity of other elements
 
 (def state (atom initial-state))
 
@@ -96,7 +128,15 @@
      "#A3DD93"
      "#93CDB9"
      "#8FB0BA"
-     "#8492B4"]})
+     "#8492B4"]
+
+   :equine
+    ;; from: http://www.colourlovers.com/palette/4245393/Equine
+    ["#4D7096"
+     "#4B90BA"
+     "#60B0FB"
+     "#9A6E7B"
+     "#6E3042"]})
 
 (defn color-table []
   (color-tables (:color-key @state)))
@@ -115,7 +155,7 @@
     :colors [4]}])
 
 (defn page-height []
-  (case (:page @state)
+  (case (:page-key @state)
     :mobile (* block-height (count (color-table)))
     :desktop (reduce + 0 (map :height block-table))
     nil))
@@ -142,7 +182,7 @@
   (.restore ctx))
 
 (defn draw-page [ctx]
-  (case (:page @state)
+  (case (:page-key @state)
     :mobile (draw-mobile-page ctx)
     :desktop (draw-desktop-page ctx)
     (draw-placeholder ctx)))
@@ -182,8 +222,8 @@
     (transform-space-to-page ctx)
     (set! (.-globalAlpha ctx) (/ space-alpha 2))
     (when-let [{:keys [x y scale]} (:prev-viewport @state)]
-      (set! (.-lineWidth ctx) frame-thickness)
-      (set! (.-strokeStyle ctx) frame-color)
+      (set! (.-lineWidth ctx) border-thickness)
+      (set! (.-strokeStyle ctx) border-color)
       (.strokeRect ctx x y (/ phone-width scale) (/ phone-height scale)))
     (.restore ctx)))
 
@@ -199,15 +239,15 @@
     (draw-prev-viewport ctx)
 
     ;; Draw the current viewport frame
-    (set! (.-lineWidth ctx) frame-thickness)
-    (set! (.-strokeStyle ctx) frame-color)
+    (set! (.-lineWidth ctx) border-thickness)
+    (set! (.-strokeStyle ctx) border-color)
     (.strokeRect ctx phone-x phone-y phone-width phone-height)
 
     ;; Highlight the viewport frame to communicate when its frozen.
-    (set! (.-lineWidth ctx) (+ 2 frame-thickness))
-    (set! (.-strokeStyle ctx) freeze-frame-color)
+    (set! (.-lineWidth ctx) (+ 2 border-thickness))
+    (set! (.-strokeStyle ctx) freeze-border-color)
     (.save ctx)
-    (set! (.-globalAlpha ctx) (:freeze-opacity @state))
+    (set! (.-globalAlpha ctx) (:freeze-border-alpha @state))
     (.strokeRect ctx phone-x phone-y phone-width phone-height)
     (.restore ctx)
 
@@ -215,7 +255,7 @@
     (set! (.-font ctx) "300 40px Roboto")
     (set! (.-textAlign ctx) "center")
     (set! (.-textBaseline ctx) "middle")
-    (set! (.-fillStyle ctx) frame-color)
+    (set! (.-fillStyle ctx) border-color)
     (let [x (/ phone-x 2)
           y (+ phone-y (/ phone-height 2))
           lines (:caption @state)
@@ -349,7 +389,7 @@
 
 (defn start-scroll-anim! []
   (swap! state assoc
-    :page :mobile
+    :page-key :mobile
     :color-key :pond-queens
     :caption "viewport =")
   (let [margin 30
@@ -362,7 +402,7 @@
 
 (defn start-zoom-anim! []
   (swap! state assoc
-    :page :desktop
+    :page-key :desktop
     :color-key :ablaze
     :caption "viewport =")
   (let [margin 30
@@ -385,9 +425,9 @@
     (<! (animate! [:viewport :scale] {:a :_ :b scale :duration 0.1}))
     (let [dt 100]
       (dotimes [i 6]
-        (swap! state assoc :freeze-opacity 0)
+        (swap! state assoc :freeze-border-alpha 0)
         (<! (timeout dt))
-        (swap! state assoc :freeze-opacity 1)
+        (swap! state assoc :freeze-border-alpha 1)
         (<! (timeout dt))))
     nil))
 
@@ -400,11 +440,11 @@
              [[:viewport :y]     {:a :_ :b y :duration 0.1}]
              [[:viewport :scale] {:a :_ :b scale :duration 0.1}]]))
       (swap! state assoc :prev-viewport nil))
-    (<! (animate! [:freeze-opacity] {:a 1 :b 0 :duration 1}))))
+    (<! (animate! [:freeze-border-alpha] {:a 1 :b 0 :duration 1}))))
 
 (defn start-freeze-anim! []
   (swap! state assoc
-    :page :desktop
+    :page-key :desktop
     :color-key :sky-tonight)
   (let [margin 30
         top (- margin)
