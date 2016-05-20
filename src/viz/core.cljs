@@ -278,7 +278,7 @@
   (js/requestAnimationFrame draw-loop))
 
 ;;----------------------------------------------------------------------
-;; Animation
+;; Animation Helpers
 ;;----------------------------------------------------------------------
 
 (def tick-chan
@@ -350,42 +350,8 @@
         (<! a)))))
 
 ;;----------------------------------------------------------------------
-;; Init
+;; Animations
 ;;----------------------------------------------------------------------
-
-(defn init-frame []
-  (let [frame (js/document.getElementById "frame")
-        x (- phone-x frame-x)
-        y (- phone-y frame-y)
-        scale (/ phone-width frame-width)]
-    (set! (.. frame -style -left) (str x "px"))
-    (set! (.. frame -style -top) (str y "px"))
-    (aset (.. frame -style) "transform-origin" (str frame-x "px " frame-y "px"))
-    (set! (.. frame -style -transform) (str "scale(" scale ")"))))
-
-(defn init-phone []
-  (let [canvas (js/document.getElementById "phone-canvas")]
-    (set! (.. canvas -width) phone-width)
-    (set! (.. canvas -height) phone-height)
-    (set! (.. canvas -style -left) (str phone-x "px"))
-    (set! (.. canvas -style -top) (str phone-y "px"))
-    (set! phone-ctx (.getContext canvas "2d"))
-    (set! phone-canvas canvas)))
-
-(defn init-space []
-  (let [canvas (js/document.getElementById "space-canvas")]
-    (set! (.. canvas -width) space-width)
-    (set! (.. canvas -height) space-height)
-    (set! (.. canvas -style -left) (str space-x "px"))
-    (set! (.. canvas -style -top) (str space-y "px"))
-    (set! space-ctx (.getContext canvas "2d"))
-    (set! space-canvas canvas)))
-
-(defn load-fonts!
-  [families]
-  (let [c (chan)]
-    (.load js/WebFont (clj->js {:google {:families families} :active #(close! c)}))
-    c))
 
 (defn start-scroll-anim! []
   (swap! state assoc
@@ -468,6 +434,44 @@
       (<! (animate! [:viewport :scale] {:a :_ :b 1 :duration 1}))
       (<! (animate! [:viewport :y]     {:a :_ :b top :duration 1}))
       (recur))))
+
+;;----------------------------------------------------------------------
+;; Init
+;;----------------------------------------------------------------------
+
+(defn init-frame []
+  (let [frame (js/document.getElementById "frame")
+        x (- phone-x frame-x)
+        y (- phone-y frame-y)
+        scale (/ phone-width frame-width)]
+    (set! (.. frame -style -left) (str x "px"))
+    (set! (.. frame -style -top) (str y "px"))
+    (aset (.. frame -style) "transform-origin" (str frame-x "px " frame-y "px"))
+    (set! (.. frame -style -transform) (str "scale(" scale ")"))))
+
+(defn init-phone []
+  (let [canvas (js/document.getElementById "phone-canvas")]
+    (set! (.. canvas -width) phone-width)
+    (set! (.. canvas -height) phone-height)
+    (set! (.. canvas -style -left) (str phone-x "px"))
+    (set! (.. canvas -style -top) (str phone-y "px"))
+    (set! phone-ctx (.getContext canvas "2d"))
+    (set! phone-canvas canvas)))
+
+(defn init-space []
+  (let [canvas (js/document.getElementById "space-canvas")]
+    (set! (.. canvas -width) space-width)
+    (set! (.. canvas -height) space-height)
+    (set! (.. canvas -style -left) (str space-x "px"))
+    (set! (.. canvas -style -top) (str space-y "px"))
+    (set! space-ctx (.getContext canvas "2d"))
+    (set! space-canvas canvas)))
+
+(defn load-fonts!
+  [families]
+  (let [c (chan)]
+    (.load js/WebFont (clj->js {:google {:families families} :active #(close! c)}))
+    c))
 
 (defn init []
   (init-phone)
