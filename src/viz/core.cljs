@@ -93,7 +93,7 @@
 ;; Draw Page
 ;;----------------------------------------------------------------------
 
-(def color-tables
+(def color-palettes
   {:not-another-rainbow
     ;; from: http://www.colourlovers.com/palette/141533/Not_Another_Rainbow
     ["#6AA394"
@@ -134,54 +134,52 @@
      "#9A6E7B"
      "#6E3042"]})
 
-(defn color-table []
-  (color-tables (:color-key @state)))
+(defn color-palette []
+  (color-palettes (:color-key @state)))
 
 (def block-height 220)
 (def block-width phone-width)
 
-(def block-table ;; layout for desktop page
-  [{:height block-height
-    :colors [0]}
-   {:height (* block-height 0.7)
-    :colors [1 2]}
-   {:height (* block-height 0.5)
-    :colors [3]}
-   {:height block-height
-    :colors [4]}])
+(def block-layouts ;; layout for desktop page
+  {:mobile
+    [{:height block-height
+      :colors [0]}
+     {:height block-height
+      :colors [1]}
+     {:height block-height
+      :colors [2]}
+     {:height block-height
+      :colors [3]}
+     {:height block-height
+      :colors [4]}]
+   :desktop
+    [{:height block-height
+      :colors [0]}
+     {:height (* block-height 0.7)
+      :colors [1 2]}
+     {:height (* block-height 0.5)
+      :colors [3]}
+     {:height block-height
+      :colors [4]}]})
+
+(defn block-layout []
+  (block-layouts (:page-key @state)))
 
 (defn page-height []
-  (case (:page-key @state)
-    :mobile (* block-height (count (color-table)))
-    :desktop (reduce + 0 (map :height block-table))
-    nil))
+  (reduce + 0 (map :height (block-layout))))
 
-(defn draw-mobile-page [ctx]
+(defn draw-page [ctx]
   (.save ctx)
-  (doseq [color (color-table)]
-    (set! (.. ctx -fillStyle) color)
-    (.fillRect ctx 0 0 block-width block-height)
-    (.translate ctx 0 block-height))
-  (.restore ctx))
-
-(defn draw-desktop-page [ctx]
-  (.save ctx)
-  (doseq [{:keys [height colors]} block-table]
+  (doseq [{:keys [height colors]} (block-layout)]
     (let [width (/ block-width (count colors))]
       (.save ctx)
       (doseq [color colors]
-        (set! (.. ctx -fillStyle) (get (color-table) color))
+        (set! (.. ctx -fillStyle) (get (color-palette) color))
         (.fillRect ctx 0 0 width height)
         (.translate ctx width 0))
       (.restore ctx)
       (.translate ctx 0 height)))
   (.restore ctx))
-
-(defn draw-page [ctx]
-  (case (:page-key @state)
-    :mobile (draw-mobile-page ctx)
-    :desktop (draw-desktop-page ctx)
-    nil))
 
 ;;----------------------------------------------------------------------
 ;; Draw Views
