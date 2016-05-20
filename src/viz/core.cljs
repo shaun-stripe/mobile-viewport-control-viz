@@ -85,7 +85,7 @@
    ;; When isolating an element, we lower the opacity
    ;; of all other elements (i.e. the color blocks).
    :isolate {:index nil  ;; element to isolate
-             :alpha 0}}) ;; opacity of other elements
+             :alpha 1}}) ;; opacity of other elements
 
 (def state (atom initial-state))
 
@@ -172,7 +172,8 @@
           (set! (.-fillStyle ctx) (get (color-palette) color-key))
           (let [{:keys [index alpha]} (:isolate @state)]
             (when (and index (not= @block-count index))
-              (set! (.-globalAlpha ctx) alpha)))
+              (let [current (or (.-globalAlpha ctx) 1)]
+                (set! (.-globalAlpha ctx) (* current alpha)))))
           (.fillRect ctx 0 0 width height)
           (.restore ctx)
           (.translate ctx width 0)
@@ -435,7 +436,7 @@
 (defn start-isolate-anim! []
   (swap! state assoc
     :page-key :desktop
-    :color-key :equine)
+    :color-key :pond-queens)
   (let [margin 30
         top (- margin)
         bottom (- (+ (page-height) margin) phone-height)
@@ -477,8 +478,6 @@
 
       (<! (animate! [:viewport :y] {:a :_ :b top :duration 2}))
       (recur))))
-
-
 
 ;;----------------------------------------------------------------------
 ;; Init
