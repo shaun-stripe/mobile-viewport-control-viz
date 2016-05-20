@@ -93,10 +93,6 @@
 ;; Draw Page
 ;;----------------------------------------------------------------------
 
-(defn draw-placeholder [ctx]
-  (let [img (js/document.getElementById "placeholder")]
-    (.drawImage ctx img 0 0)))
-
 (def color-tables
   {:not-another-rainbow
     ;; from: http://www.colourlovers.com/palette/141533/Not_Another_Rainbow
@@ -185,7 +181,7 @@
   (case (:page-key @state)
     :mobile (draw-mobile-page ctx)
     :desktop (draw-desktop-page ctx)
-    (draw-placeholder ctx)))
+    nil))
 
 ;;----------------------------------------------------------------------
 ;; Draw Views
