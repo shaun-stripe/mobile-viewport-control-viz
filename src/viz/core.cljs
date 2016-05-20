@@ -92,12 +92,15 @@
     nil))
 
 (defn draw-mobile-page [ctx]
+  (.save ctx)
   (doseq [color color-table]
     (set! (.. ctx -fillStyle) color)
     (.fillRect ctx 0 0 block-width block-height)
-    (.translate ctx 0 block-height)))
+    (.translate ctx 0 block-height))
+  (.restore ctx))
 
 (defn draw-desktop-page [ctx]
+  (.save ctx)
   (doseq [{:keys [height colors]} block-table]
     (let [width (/ block-width (count colors))]
       (.save ctx)
@@ -106,7 +109,8 @@
         (.fillRect ctx 0 0 width height)
         (.translate ctx width 0))
       (.restore ctx)
-      (.translate ctx 0 height))))
+      (.translate ctx 0 height)))
+  (.restore ctx))
 
 (defn draw-page [ctx]
   (case (:page @state)
@@ -129,30 +133,56 @@
     (draw-page ctx)
     (.restore ctx)))
 
-(defn draw-page-on-space []
-  (let [{:keys [x y scale]} (:viewport @state)
-        ctx space-ctx]
-    (.save ctx)
+(defn transform-space-to-page [ctx]
+  (let [{:keys [x y scale]} (:viewport @state)]
     (.translate ctx phone-x phone-y)
     (.scale ctx scale scale)
-    (.translate ctx (- x) (- y))
+    (.translate ctx (- x) (- y))))
+
+(defn draw-page-on-space []
+  (let [ctx space-ctx]
+    (.save ctx)
+    (transform-space-to-page ctx)
     (set! (.-globalAlpha ctx) space-alpha)
     (draw-page ctx)
+    (.restore ctx)))
+
+(defn draw-prev-viewport [ctx]
+  (let [{:keys [x y scale]} (:viewport @state)]
+    (.save ctx)
+    (transform-space-to-page ctx)
+    (set! (.-globalAlpha ctx) (/ space-alpha 2))
+    (when-let [{:keys [x y scale]} (:prev-viewport @state)]
+      (set! (.-lineWidth ctx) frame-thickness)
+      (set! (.-strokeStyle ctx) frame-color)
+      (.strokeRect ctx x y (/ phone-width scale) (/ phone-height scale)))
     (.restore ctx)))
 
 (defn draw-phone-on-space []
   (let [ctx space-ctx]
     (.save ctx)
+
+    ;; Draw the view rendered to the phone.
+    ;; (will act to highlight the viewport over the translucent surrounding page)
     (.drawImage ctx phone-canvas phone-x phone-y)
+
+    ;; Draw a light border to show the previous viewport to be thawed.
+    (draw-prev-viewport ctx)
+
+    ;; Draw the current viewport frame
     (set! (.-lineWidth ctx) frame-thickness)
     (set! (.-strokeStyle ctx) frame-color)
     (.strokeRect ctx phone-x phone-y phone-width phone-height)
+
+    ;; Highlight the viewport frame to communicate when its frozen.
     (set! (.-lineWidth ctx) (+ 2 frame-thickness))
     (set! (.-strokeStyle ctx) freeze-frame-color)
     (.save ctx)
     (set! (.-globalAlpha ctx) (:freeze-opacity @state))
     (.strokeRect ctx phone-x phone-y phone-width phone-height)
     (.restore ctx)
+
+    ;; Draw viewport caption
     (set! (.-font ctx) "300 40px Roboto")
     (set! (.-textAlign ctx) "center")
     (set! (.-textBaseline ctx) "middle")
@@ -164,6 +194,7 @@
       (doseq [line lines]
         (.fillText ctx line x y)
         (.translate ctx 0 48)))
+
     (.restore ctx)))
 
 (defn draw []
@@ -336,7 +367,8 @@
       (<! (multi-animate!
             [[[:viewport :x]     {:a :_ :b x :duration 0.1}]
              [[:viewport :y]     {:a :_ :b y :duration 0.1}]
-             [[:viewport :scale] {:a :_ :b scale :duration 0.1}]])))
+             [[:viewport :scale] {:a :_ :b scale :duration 0.1}]]))
+      (swap! state assoc :prev-viewport nil))
     (<! (animate! [:freeze-opacity] {:a 1 :b 0 :duration 1}))))
 
 (defn start-freeze-anim! []
