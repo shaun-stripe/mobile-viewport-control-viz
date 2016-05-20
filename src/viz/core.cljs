@@ -415,13 +415,13 @@
       (<! (animate! [:viewport :y]     {:a top :b mid :duration 1}))
       (<! (animate! [:viewport :scale] {:a :_ :b 2 :duration 2}))
 
-      (swap! state assoc :caption ["Freeze" "zoom"])
+      (swap! state assoc :caption ["1. Freeze" "zoom"])
       (<! (freeze-frame! 1))
       (<! (timeout 1))
 
       (<! (animate! [:viewport :y]     {:a :_ :b bottom :duration 2}))
 
-      (swap! state assoc :caption ["Thaw to" "restore"])
+      (swap! state assoc :caption ["2. Thaw to" "restore"])
       (<! (thaw-frame!))
 
       (<! (animate! [:viewport :y]     {:a :_ :b bottom :duration 1}))
