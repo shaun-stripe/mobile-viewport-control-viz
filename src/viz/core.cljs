@@ -142,16 +142,9 @@
 
 (def block-layouts ;; layout for desktop page
   {:mobile
-    [{:height block-height
-      :colors [0]}
-     {:height block-height
-      :colors [1]}
-     {:height block-height
-      :colors [2]}
-     {:height block-height
-      :colors [3]}
-     {:height block-height
-      :colors [4]}]
+    (vec (for [i (range 5)]
+           {:height block-height
+            :colors [i]}))
    :desktop
     [{:height block-height
       :colors [0]}
