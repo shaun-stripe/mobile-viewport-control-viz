@@ -13,8 +13,8 @@ Creating the animations for [mobile-viewport-control](https://github.com/shaunst
     <td>[![zoom][zoom-gif]][zoom-gfy]</td>
   </tr>
   <tr>
-    <td>__Figure 1.__ Scrolling</td>
-    <td>__Figure 2.__ Zooming + Scrolling</td>
+    <td>`(start-scroll-anim!)`</td>
+    <td>`(start-zoom-anim!)`</td>
   </tr>
 </table>
 
@@ -24,8 +24,8 @@ Creating the animations for [mobile-viewport-control](https://github.com/shaunst
     <td>[![isolate][isolate-gif]][isolate-gfy]</td>
   </tr>
   <tr>
-    <td>__Figure 3.__ Freezing and Thawing</td>
-    <td>__Figure 4.__ Isolating the Modal</td>
+    <td>`(start-freeze-anim!)`</td>
+    <td>`(start-isolate-anim!)`</td>
   </tr>
  </table>
 
